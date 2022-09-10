@@ -1,0 +1,24 @@
+# 1st stage, build the app
+FROM maven:3.8.4-openjdk-11-slim as build
+
+WORKDIR /springboot
+
+# Create a first layer to cache the "Maven World" in the local repository.
+# Incremental docker builds will always resume after that, unless you update
+# the pom
+ADD pom.xml .
+#RUN mvn dependency:go-offline
+RUN echo "Start build!"
+RUN mvn -B dependency:resolve-plugins dependency:resolve
+# Do the Maven build!
+# Incremental docker builds will resume here when you change sources
+ADD src src
+RUN mvn  package 
+RUN echo "done!"
+
+# 2nd stage, build the runtime image
+FROM  adoptopenjdk/openjdk11
+# Copy the binary built in the 1st stage
+COPY --from=build /springboot/target/*.jar ./
+EXPOSE 8081
+ENTRYPOINT ["java","-jar","/employee-apis-1.0.jar"]
